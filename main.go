@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+
 	//"github.com/honcao/golang/pkg/apiv2"
 	"math/rand"
 	"reflect"
@@ -142,8 +143,10 @@ func DeepAssignment(dstValue, srcValue reflect.Value, depth int, path string) (e
 	switch srcValue.Kind() {
 	case reflect.String:
 		dstValue.SetString(srcValue.String())
-	case reflect.Int:
+	case reflect.Int, reflect.Int64, reflect.Int32, reflect.Int16, reflect.Int8:
 		dstValue.SetInt(srcValue.Int())
+	case reflect.Float64, reflect.Float32:
+		dstValue.SetFloat(srcValue.Float())
 	case reflect.Struct:
 		for i := 0; i < srcValue.NumField(); i++ {
 			srcField := srcValue.Field(i)
