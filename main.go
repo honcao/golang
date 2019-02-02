@@ -1,8 +1,9 @@
 package main
 
 import (
-	"errors"
+	"context"
 	"fmt"
+	"log"
 
 	//"github.com/honcao/golang/pkg/apiv2"
 	"math/rand"
@@ -10,7 +11,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/honcao/golang/pkg/apiv1"
+	"github.com/honcao/golang/pkg/armhelper"
+	azarmhelper "github.com/honcao/golang/pkg/armhelper/azure"
 )
 
 func nextint() func() int {
@@ -120,59 +124,153 @@ func Play(name string, hit chan int) {
 	}
 }
 
-func DeepAssignmentWrapper(dst, src interface{}) (err error) {
+func DeepAssignmentWrapper(dst, src interface{}) {
 
 	dstValue := reflect.ValueOf(dst)
 	srcValue := reflect.ValueOf(src)
+
 	if dstValue.Kind() != reflect.Ptr {
-		return errors.New("dst is not pointer to stuct")
+		log.Fatal("dst is not pointer to stuct")
 	}
 	dstValue = dstValue.Elem()
 	if dstValue.Kind() != reflect.Struct {
-		return errors.New("dst is not pointer to stuct")
+		fmt.Println(dstValue.Kind())
+		log.Fatal("dst is not pointer to stuct")
 	}
 	if srcValue.Kind() != reflect.Struct {
-		return errors.New("src is not pointer to stuct")
+		log.Fatal("src is not stuct")
 	}
+	//initializeStruct(dstValue.Type(), dstValue)
 	DeepAssignment(dstValue, srcValue, 0, "")
-	return nil
 }
 
-func DeepAssignment(dstValue, srcValue reflect.Value, depth int, path string) (err error) {
-
-	switch srcValue.Kind() {
-	case reflect.String:
-		dstValue.SetString(srcValue.String())
-	case reflect.Int, reflect.Int64, reflect.Int32, reflect.Int16, reflect.Int8:
-		dstValue.SetInt(srcValue.Int())
-	case reflect.Float64, reflect.Float32:
-		dstValue.SetFloat(srcValue.Float())
-	case reflect.Struct:
-		for i := 0; i < srcValue.NumField(); i++ {
-			srcField := srcValue.Field(i)
-			fmt.Println(srcValue.Type().Field(i).Name)
-			dstField := dstValue.FieldByName(srcValue.Type().Field(i).Name)
-			if dstField.IsValid() {
-				DeepAssignment(dstField, srcField, depth+1, "")
-			}
+func initializeStruct(t reflect.Type, v reflect.Value) {
+	for i := 0; i < v.NumField(); i++ {
+		f := v.Field(i)
+		ft := t.Field(i)
+		switch ft.Type.Kind() {
+		case reflect.Map:
+			f.Set(reflect.MakeMap(ft.Type))
+		case reflect.Slice:
+			f.Set(reflect.MakeSlice(ft.Type, 0, 0))
+		case reflect.Chan:
+			f.Set(reflect.MakeChan(ft.Type, 0))
+		case reflect.Struct:
+			initializeStruct(ft.Type, f)
+		case reflect.Ptr:
+			fv := reflect.New(ft.Type.Elem())
+			initializeStruct(ft.Type.Elem(), fv.Elem())
+			f.Set(fv)
+		default:
 		}
-	default:
 	}
-	return nil
+}
+
+func DeepAssignment(dstValue, srcValue reflect.Value, depth int, path string) {
+	if dstValue.CanSet() {
+		switch srcValue.Kind() {
+		case reflect.Bool:
+			dstValue.SetBool(srcValue.Bool())
+		case reflect.String:
+			dstValue.SetString(srcValue.String())
+		case reflect.Int, reflect.Int64, reflect.Int32, reflect.Int16, reflect.Int8:
+			dstValue.SetInt(srcValue.Int())
+		case reflect.Uint, reflect.Uint64, reflect.Uint32, reflect.Uint16, reflect.Uint8:
+			dstValue.SetUint(srcValue.Uint())
+		case reflect.Float64, reflect.Float32:
+			dstValue.SetFloat(srcValue.Float())
+		case reflect.Complex64, reflect.Complex128:
+			dstValue.SetComplex(srcValue.Complex())
+		case reflect.Ptr:
+			d := reflect.New(dstValue.Type().Elem())
+			dstValue.Set(d)
+			DeepAssignment(dstValue.Elem(), srcValue.Elem(), depth+1, "")
+		case reflect.Slice:
+			d := reflect.New(dstValue.Type()).Elem()
+			for i := 0; i < srcValue.Len(); i++ {
+				v := reflect.New(srcValue.Index(i).Type()).Elem()
+				DeepAssignment(v, srcValue.Index(i), depth+1, "")
+				d = reflect.Append(d, v)
+			}
+			dstValue.Set(d)
+		case reflect.Array:
+			d := reflect.New(dstValue.Type()).Elem()
+			for i := 0; i < srcValue.Len(); i++ {
+				v := reflect.New(srcValue.Index(i).Type()).Elem()
+				DeepAssignment(v, srcValue.Index(i), depth+1, "")
+				d.Index(i).Set(v)
+			}
+			dstValue.Set(d)
+		case reflect.Map:
+			d := reflect.MakeMap(dstValue.Type())
+			for _, key := range srcValue.MapKeys() {
+				v := reflect.New(srcValue.MapIndex(key).Type()).Elem()
+				fmt.Println(srcValue.MapIndex(key))
+				DeepAssignment(v, srcValue.MapIndex(key), depth+1, "")
+				d.SetMapIndex(key, v)
+			}
+			dstValue.Set(d)
+		case reflect.Struct:
+			for i := 0; i < srcValue.NumField(); i++ {
+				srcField := srcValue.Field(i)
+				fmt.Println(srcValue.Type().Field(i).Name)
+				dstField := dstValue.FieldByName(srcValue.Type().Field(i).Name)
+				if dstField.IsValid() {
+					DeepAssignment(dstField, srcField, depth+1, "")
+				}
+			}
+		default:
+		}
+	}
 }
 
 type myString string
 
 func main() {
 
+	env, err := azure.EnvironmentFromName("AzurePublicCloud")
+	if err != nil {
+		panic(err)
+	}
+
+	armclient, _ := azarmhelper.NewAzureClientWithClientSecret(env, "9ee2ec52-83c0-405e-a009-6636ead37acd", "72f988bf-86f1-41af-91ab-2d7cd011db47", "85115f84-ef7b-4ddb-b44d-b3a9d3b1990d", "Jw5Sx64ANZoU0bFbxmzoLZxC3U01Kn3PiKAQB3Aa+ZU=")
+
+	rg, err := armclient.EnsureResourceGroup(context.Background(), "honcaorg1", "eastus", nil)
+	g := armhelper.Group{}
+	DeepAssignmentWrapper(&g, *rg)
+	fmt.Println(err)
+	fmt.Printf("%T\n", *rg.Properties)
+	fmt.Println(*rg.Name)
+
+	s := "abc"
+	i := -100
 	src := apiv1.TypeB{
-		Name: "abc",
-		Age:  15,
+		Name:        "abc",
+		Age:         -15,
+		Uint:        100,
+		Float32:     1.9005,
+		StringPtr:   &s,
+		IntPtr:      &i,
+		IntSlice:    []int{1, 2, 3, 4},
+		StringSlice: []string{"a1", "b", "c", "d"},
+		StructPtr:   &apiv1.TypeD{DName: "dname"},
+		TypeCSlice: []apiv1.TypeC{
+			apiv1.TypeC{
+				CName: "c1",
+			},
+			apiv1.TypeC{
+				CName: "c2",
+			},
+		},
+		StringArray:  [5]string{"aa", "bb", "cc", "dd", "ee"},
+		StringMap:    map[string]string{"abc": "bcd", "def": "fgh"},
+		StringMapMap: map[string]map[string]string{"abc": {"abci": "bcd"}, "def": {"defi": "fgh"}},
 	}
 	dst := apiv1.TypeB{}
-	err := DeepAssignmentWrapper(&dst, src)
-	fmt.Println(err)
+	DeepAssignmentWrapper(&dst, src)
+	fmt.Println(src)
 	fmt.Println(dst)
+	fmt.Println(*dst.StructPtr)
 
 	/*
 		var src string
