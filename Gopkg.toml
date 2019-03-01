@@ -27,11 +27,19 @@
 
 [[constraint]]
   name = "github.com/Azure/azure-sdk-for-go"
-  version = "21.1.0"
+  version = "24.0.0"
 
 [[constraint]]
   name = "github.com/Azure/go-autorest"
-  version = "10.15.5"
+  version = "11.2.8"
+
+[[constraint]]
+  name = "github.com/onsi/ginkgo"
+  version = "1.7.0"
+
+[[constraint]]
+  name = "github.com/onsi/gomega"
+  version = "1.4.3"
 
 [prune]
   go-tests = true

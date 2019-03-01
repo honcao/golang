@@ -1,0 +1,102 @@
+[
+    {
+        "id": "/subscriptions/aadffa82-2640-4dd0-bc2d-6c4966268856/resourceGroups/k1110114/providers/Microsoft.Compute/virtualMachineScaleSets/k8s-linuxpool-36308977-vmss",
+        "location": "local",
+        "name": "k8s-linuxpool-36308977-vmss",
+        "properties": {
+            "upgradePolicy": {
+                "mode": "Manual",
+                "automaticOSUpgrade": false
+            },
+            "virtualMachineProfile": {
+                "osProfile": {
+                    "computerNamePrefix": "k8s-linuxpool-36308977-vmss",
+                    "adminUsername": "azureuser",
+                    "linuxConfiguration": {
+                        "disablePasswordAuthentication": true,
+                        "ssh": {
+                            "publicKeys": [
+                                {
+                                    "path": "/home/azureuser/.ssh/authorized_keys",
+                                    "keyData": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDu3X4RAOuZ21nZeGazygwN9atjz4FDe1fAu1imC7Jmn61rmU2QZ7q4VXEfET868ftcw9E34kRj/VHsqZ4Dr55/nIE1fZUUShE33GpyRmpLGQvGpB4Kb0UC728J8JYJ++RsLN92ogMj60hWwsINvMlSsDy4lMiVL44qf23g7RUhEHf0pPKK1rsWPNFZEQsam/J6n868zCgNUeTCw0kT8LUTmiggM0Qz2QIj+/SlGvB6j1xCtzVL8JXxowl8z0nK/wQ+Cb68UIBx0DfKAq7bZmL593Jpe2wSdu2losIOXZiunVmCz9gJILGbIl7XVBEnUtqy6LtCnSazRjoTR+0yuaqR"
+                                }
+                            ]
+                        }
+                    },
+                    "secrets": []
+                },
+                "storageProfile": {
+                    "imageReference": {
+                        "publisher": "Canonical",
+                        "offer": "UbuntuServer",
+                        "sku": "16.04-LTS",
+                        "version": "latest"
+                    },
+                    "osDisk": {
+                        "caching": "ReadWrite",
+                        "createOption": "FromImage",
+                        "managedDisk": {
+                            "storageAccountType": "Standard_LRS"
+                        }
+                    }
+                },
+                "networkProfile": {
+                    "networkInterfaceConfigurations": [
+                        {
+                            "name": "k8s-linuxpool-36308977-vmss",
+                            "properties": {
+                                "primary": true,
+                                "ipConfigurations": [
+                                    {
+                                        "name": "ipconfig1",
+                                        "properties": {
+                                            "subnet": {
+                                                "id": "/subscriptions/aadffa82-2640-4dd0-bc2d-6c4966268856/resourceGroups/k1110114/providers/Microsoft.Network/virtualNetworks/k8s-vnet-36308977/subnets/k8s-subnet"
+                                            },
+                                            "loadBalancerBackendAddressPools": [
+                                                {
+                                                    "id": "/subscriptions/aadffa82-2640-4dd0-bc2d-6c4966268856/resourceGroups/k1110114/providers/Microsoft.Network/loadBalancers/k1110114/backendAddressPools/k1110114"
+                                                }
+                                            ]
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    ]
+                },
+                "extensionProfile": {
+                    "extensions": [
+                        {
+                            "name": "vmssCSE",
+                            "properties": {
+                                "publisher": "Microsoft.Azure.Extensions",
+                                "type": "CustomScript",
+                                "typeHandlerVersion": "2.0",
+                                "autoUpgradeMinorVersion": true,
+                                "settings": {}
+                            }
+                        }
+                    ]
+                }
+            },
+            "provisioningState": "Succeeded",
+            "overprovision": false,
+            "uniqueId": "6a7c4cc7-a947-4816-bd29-db3c349477cf",
+            "singlePlacementGroup": true
+        },
+        "sku": {
+            "name": "Standard_D2_v2",
+            "tier": "Standard",
+            "capacity": 7
+        },
+        "tags": {
+            "aksEngineVersion": "canary",
+            "creationSource": "aksengine-k8s-linuxpool-36308977-vmss",
+            "orchestrator": "Kubernetes:1.11.7",
+            "poolName": "linuxpool",
+            "resourceNameSuffix": "36308977"
+        },
+        "type": "Microsoft.Compute/virtualMachineScaleSets"
+    }
+]
