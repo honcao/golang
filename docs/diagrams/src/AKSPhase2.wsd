@@ -1,0 +1,109 @@
+@startuml
+
+package "armhelpers" {
+    interface AKSEngineClient
+    interface VirtualMachineListResultPage
+
+    class VirtualMachine{
+    }
+    
+    class VirtualMachineListResult{
+    }
+    
+    VirtualMachineListResultPage : Next() error
+    VirtualMachineListResultPage : NotDone() bool
+    VirtualMachineListResultPage : Response() "VirtualMachineListResult"
+    VirtualMachineListResultPage : Values() "[]VirtualMachine"
+
+    AKSEngineClient : ListVirtualMachines(ctx context.Context, resourceGroup string) (VirtualMachineListResultPage, error)
+    AKSEngineClient : GetVirtualMachine(ctx context.Context, resourceGroup, name string) ("VirtualMachine", error)
+    AKSEngineClient : DeployTemplate(ctx context.Context, resourceGroup, name string, template, parameters map[string]interface{}) ("DeploymentExtended", error)
+
+
+    AKSEngineClient --> VirtualMachineListResultPage 
+    AKSEngineClient --> "VirtualMachine" 
+    VirtualMachineListResultPage --> "VirtualMachine" 
+    AzureClient --> "2018-10-01/compute.VirtualMachine"
+    
+    class AzureClient
+    note left of AzureClient
+    GetVirtualMachine(ctx context.Context, resourceGroup, name string) ("2018-10-01/compute.VirtualMachine", error {
+        vm, err := "2018-10-01/compute".virtualMachinesClient.Get(ctx, resourceGroup, name, "")
+        azVM := armhelps.VirtualMachine{}
+        DeepAssignment(&azVM, vm)
+        return azVM,err
+    }
+    end note
+
+    AzureClient : ListVirtualMachines(ctx context.Context, resourceGroup string) (VirtualMachineListResultPage, error)
+    AzureClient : GetVirtualMachine(ctx context.Context, resourceGroup, name string) ("2018-10-01/compute.VirtualMachine", error)
+    AzureClient : DeployTemplate(ctx context.Context, resourceGroup, name string, template, parameters map[string]interface{}) ("2018-05-01/resources.DeploymentExtended", error)
+    AKSEngineClient <|-- AzureClient
+
+    class "AzureStack/AzureClient"
+    note right of "AzureStack/AzureClient"
+    GetVirtualMachine(ctx context.Context, resourceGroup, name string) ("2018-10-01/compute.VirtualMachine", error {
+        vm, err := "2017-03-30/compute".virtualMachinesClient.Get(ctx, resourceGroup, name, "")
+        azVM := armhelpers.VirtualMachine{}
+        DeepAssignment(&azVM, vm)
+        return azVM, err
+    }
+    end note
+    AKSEngineClient <|-- "AzureStack/AzureClient"
+    "AzureStack/AzureClient" : ListVirtualMachines(ctx context.Context, resourceGroup string) (VirtualMachineListResultPage, error)
+    "AzureStack/AzureClient" : GetVirtualMachine(ctx context.Context, resourceGroup, name string) ("VirtualMachine", error)
+    "AzureStack/AzureClient" : DeployTemplate(ctx context.Context, resourceGroup, name string, template, parameters map[string]interface{}) ("DeploymentExtended", error)
+   
+    "AzureStack/AzureClient" --> "2017-03-30/compute.VirtualMachine"
+    "AzureStack/AzureClient" --> VirtualMachineListResultPage
+}
+
+
+
+package "cmd" {
+    
+    class deployCmd{
+    }
+
+    deployCmd --> AKSEngineClient
+
+    class scaleCmd{ 
+    }
+
+    scaleCmd --> AKSEngineClient
+
+    class upgradeCmd{
+    }
+    upgradeCmd --> AKSEngineClient
+
+
+    interface authProvider {
+    }
+    authProvider : getClient() (armhelpers.AKSEngineClient, error)
+
+    class authArgs {
+        
+    }
+    authArgs : getClient() (armhelpers.AKSEngineClient, error)
+    authArgs --> "AzureStack/AzureClient"
+    authArgs --> "AzureClient"
+
+    authProvider <|-- authArgs
+    class rootCmd {
+    }
+
+   
+}
+
+package "2018-10-01/compute" {
+    class VirtualMachine{
+    }
+}
+
+package "2017-03-30/compute" {
+    class VirtualMachine{
+    }
+}
+
+
+@enduml

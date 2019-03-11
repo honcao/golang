@@ -156,22 +156,10 @@ func DeepAssignment(dst, src interface{}) {
 	dstValue := reflect.ValueOf(dst)
 	srcValue := reflect.ValueOf(src)
 	if dstValue.Kind() != reflect.Ptr {
-		log.Fatal("dst is not pointer type")
+		log.Fatal("The dst must be Ptr")
 	}
 	dstValue = dstValue.Elem()
-	if dstValue.Kind() != reflect.Struct {
-		deepAssignmentInternal(dstValue, srcValue, 0, "")
-		return
-	}
-
-	if dstValue.Kind() == reflect.Slice {
-		for i := 0; i < srcValue.Len(); i++ {
-			v := reflect.New(srcValue.Index(i).Type()).Elem()
-			deepAssignmentInternal(v, srcValue.Index(i), 0, "")
-			dstValue.Set(reflect.Append(dstValue, v))
-		}
-		return
-	}
+	deepAssignmentInternal(dstValue, srcValue, 0, "")
 }
 
 func deepAssignmentInternal(dstValue, srcValue reflect.Value, depth int, path string) {
@@ -198,14 +186,12 @@ func deepAssignmentInternal(dstValue, srcValue reflect.Value, depth int, path st
 		case reflect.Slice:
 			if !srcValue.IsNil() {
 				d := reflect.MakeSlice(dstValue.Type(), srcValue.Len(), srcValue.Cap())
-				for i := 0; i < srcValue.Len(); i++ {
-					v := reflect.New(srcValue.Index(i).Type()).Elem()
-					deepAssignmentInternal(v, srcValue.Index(i), depth+1, "")
-					if d.CanSet() {
-						d = reflect.Append(d, v)
-					}
-				}
 				dstValue.Set(d)
+				for i := 0; i < srcValue.Len(); i++ {
+					v := dstValue.Index(i)
+					deepAssignmentInternal(v, srcValue.Index(i), depth+1, "")
+					v.Set(v)
+				}
 			}
 		case reflect.Array:
 			d := reflect.New(dstValue.Type()).Elem()
@@ -241,14 +227,55 @@ func deepAssignmentInternal(dstValue, srcValue reflect.Value, depth int, path st
 type myString string
 
 func main() {
-	vmsazs := []compute.VirtualMachine{}
-	vms := []azcompute.VirtualMachine{}
-	datvm, _ := ioutil.ReadFile("vm.json")
 
-	if err := json.Unmarshal(datvm, &vms); err != nil {
+	/*
+		var x float64 = 3.4
+		ax := &x
+		fmt.Println(ax)
+		fmt.Println(&ax)
+
+		xv := reflect.ValueOf(x)
+		//fmt.Println(&xv)
+		//xve := xv.Elem()
+		fmt.Println(&xv)
+		xv.SetFloat(5.0)
+		fmt.Print(x)
+		fmt.Println(ax)
+		fmt.Println(*ax)
+
+		var y float64 = 6.7
+		xy := &y
+		fmt.Println(y)
+		fmt.Println(xy)
+		fmt.Println(*xy)
+		*xy = 5.9
+		fmt.Println(y)
+		fmt.Println(xy)
+		fmt.Println(*xy)
+	*/
+
+	/*
+		//src := []string{"abc"}
+		dst := make([]string, 5, 5)
+		//srcV := reflect.ValueOf(src)
+		dstx := &dst
+		dstxV := reflect.ValueOf(dstx)
+
+		velm := dstxV.Elem()
+		a := velm.Index(0)
+		a.Set(reflect.ValueOf("abc"))
+		//velm.Set(velm)
+
+		fmt.Println(dst)
+	*/
+	vmsazs := []compute.VirtualMachine{}
+	datvm, _ := ioutil.ReadFile("vm.json")
+	if err := json.Unmarshal(datvm, &vmsazs); err != nil {
 		panic(err)
 	}
+	vms := []azcompute.VirtualMachine{} //make([]azcompute.VirtualMachine, len(vmsazs), cap(vmsazs))
 	DeepAssignment(&vms, vmsazs)
+	fmt.Println(vms)
 
 	vmsssazs := []compute.VirtualMachineScaleSet{}
 	vmsss := []azcompute.VirtualMachineScaleSet{}
@@ -257,4 +284,5 @@ func main() {
 		panic(err)
 	}
 	DeepAssignment(&vmsss, vmsssazs)
+	fmt.Println(vmsss)
 }
